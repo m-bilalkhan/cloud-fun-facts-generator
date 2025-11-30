@@ -51,58 +51,52 @@ jobs:
           import subprocess
           import json
           import os
-          
-          # Run terraform output
+          import sys
+
+          # Run terraform output — suppress stderr
           result = subprocess.run(
               ['terraform', 'output', '-json'],
-              capture_output=True,
+              stdout=subprocess.PIPE,
+              stderr=subprocess.DEVNULL,
               text=True
           )
-          
-          # Parse the JSON output, skipping any command echo lines
+
+          raw = result.stdout.strip()
+
           try:
-              # Split by lines and find where JSON starts
-              lines = result.stdout.strip().split('\n')
-              json_start = 0
-              for i, line in enumerate(lines):
-                  if line.strip().startswith('{'):
-                      json_start = i
-                      break
-              
-              # Join from JSON start onwards
-              json_text = '\n'.join(lines[json_start:])
-              
-              outputs = json.loads(json_text)
+              outputs = json.loads(raw)
+          except json.JSONDecodeError:
+              print("❗ ERROR: Terraform returned invalid JSON")
+              print("---- RAW OUTPUT ----")
+              print(raw)
+              sys.exit(1)
+
+          # Extract the URL
+          try:
               url = outputs['api_invoke_url']['value']
-              
-              if not url:
-                  print("Error: api_invoke_url is empty")
-                  exit(1)
-              
-              print(f"Extracted URL: {url}")
-              
-              # Set GitHub output
-              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-                  f.write(f"api_url={url}\n")
-              
-              # Set GitHub secret
-              subprocess.run(
-                  ['gh', 'secret', 'set', 'API_INVOKE_URL', '--body', url],
-                  env=os.environ,
-                  check=True
-              )
-              
-              print("Successfully stored API URL")
-              
-          except json.JSONDecodeError as e:
-              print(f"Error parsing JSON: {e}")
-              print(f"Raw output:\n{result.stdout}")
-              print(f"Attempted to parse:\n{json_text}")
-              exit(1)
           except KeyError:
-              print("Error: api_invoke_url not found in outputs")
-              print(f"Available outputs: {list(outputs.keys())}")
-              exit(1)
+              print("❗ ERROR: 'api_invoke_url' not found in Terraform outputs")
+              print("Available keys:", list(outputs.keys()))
+              sys.exit(1)
+
+          if not url:
+              print("❗ ERROR: Extracted API URL is empty")
+              sys.exit(1)
+
+          print(f"Extracted URL: {url}")
+
+          # Write to GitHub Action output
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"api_url={url}\n")
+
+          # Store as GitHub secret
+          subprocess.run(
+              ['gh', 'secret', 'set', 'API_INVOKE_URL', '--body', url],
+              env=os.environ,
+              check=True
+          )
+
+          print("✔ Successfully stored API URL")
           EOF
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
