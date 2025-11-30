@@ -4,13 +4,14 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   terraform:
     runs-on: ubuntu-latest
     env:
       TF_WORKING_DIR: ./terraform
-      AWS_REGION: us-east-1
+      AWS_REGION: ${{ secrets.AWS_REGION }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
