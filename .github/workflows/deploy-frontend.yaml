@@ -37,7 +37,7 @@ jobs:
           AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
         run: |
           echo "Deploying to S3 bucket: $AWS_S3_BUCKET"
-          aws s3 sync dist/ s3://$AWS_S3_BUCKET/ --delete --only-show-errors
+          aws s3 sync ./ s3://$AWS_S3_BUCKET/ --delete --only-show-errors
 
       - name: Invalidate CloudFront cache
         env:
