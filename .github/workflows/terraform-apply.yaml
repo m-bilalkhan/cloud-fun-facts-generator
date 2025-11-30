@@ -59,9 +59,20 @@ jobs:
               text=True
           )
           
-          # Parse the JSON output
+          # Parse the JSON output, skipping any command echo lines
           try:
-              outputs = json.loads(result.stdout)
+              # Split by lines and find where JSON starts
+              lines = result.stdout.strip().split('\n')
+              json_start = 0
+              for i, line in enumerate(lines):
+                  if line.strip().startswith('{'):
+                      json_start = i
+                      break
+              
+              # Join from JSON start onwards
+              json_text = '\n'.join(lines[json_start:])
+              
+              outputs = json.loads(json_text)
               url = outputs['api_invoke_url']['value']
               
               if not url:
@@ -85,7 +96,8 @@ jobs:
               
           except json.JSONDecodeError as e:
               print(f"Error parsing JSON: {e}")
-              print(f"Raw output: {result.stdout}")
+              print(f"Raw output:\n{result.stdout}")
+              print(f"Attempted to parse:\n{json_text}")
               exit(1)
           except KeyError:
               print("Error: api_invoke_url not found in outputs")
