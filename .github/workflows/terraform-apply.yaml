@@ -54,23 +54,23 @@ jobs:
           import sys
           import re
       
-          # Run terraform output
+          # Run terraform
           result = subprocess.run(
               ['terraform', 'output', '-json'],
               capture_output=True,
               text=True
           )
       
-          raw = result.stdout.strip()
+          raw = result.stdout
       
-          # Find first '{' and slice everything before it
-          idx = raw.find('{')
-          if idx == -1:
-              print("❗ ERROR: No JSON object found in Terraform output")
+          # Extract only JSON object between first { and last }
+          m = re.search(r'\{.*\}', raw, re.DOTALL)
+          if not m:
+              print("❗ ERROR: No valid JSON object found in output")
               print("RAW OUTPUT:\n", raw)
               sys.exit(1)
       
-          json_text = raw[idx:]
+          json_text = m.group(0).strip()
       
           try:
               outputs = json.loads(json_text)
@@ -80,11 +80,11 @@ jobs:
               print("JSON TEXT:\n", json_text)
               sys.exit(1)
       
-          # Extract the URL field
+          # Extract URL
           try:
               url = outputs['api_invoke_url']['value']
           except KeyError:
-              print("❗ ERROR: 'api_invoke_url' not found in outputs")
+              print("❗ ERROR: api_invoke_url missing from JSON")
               print("Available keys:", list(outputs.keys()))
               sys.exit(1)
       
@@ -103,3 +103,4 @@ jobs:
           EOF
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
