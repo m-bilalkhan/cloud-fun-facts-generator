@@ -184,5 +184,5 @@ resource "aws_dynamodb_table_item" "initial_data" {
 }
 
 output "api_invoke_url" {
-  value = aws_apigatewayv2_api.my_api.api_endpoint
+  value = aws_apigatewayv2_api.this.api_endpoint
 }
