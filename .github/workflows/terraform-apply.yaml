@@ -44,38 +44,15 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform apply -input=false -auto-approve tfplan
 
-      - name: Get api_invoke_url output (JSON)
+      - name: Extract and Store API URL
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          if ! terraform output -json > tf_outputs.json; then
-            echo "Error: terraform output command failed"
-            cat tf_outputs.json
-            exit 1
-          fi
-          echo "Terraform outputs:"
-          cat tf_outputs.json
-      
-      - name: Extract API URL
-        id: extract_url
-        run: |
-          # Validate JSON first
-          if ! jq empty tf_outputs.json 2>/dev/null; then
-            echo "Error: tf_outputs.json is not valid JSON"
-            cat tf_outputs.json
-            exit 1
-          fi
-          
-          url=$(jq -r '.api_invoke_url.value' tf_outputs.json)
+          url=$(terraform output -json 2>/dev/null | jq -r '.api_invoke_url.value')
           if [ -z "$url" ] || [ "$url" = "null" ]; then
             echo "No api_invoke_url found in Terraform outputs"
-            echo "Available outputs:"
-            jq 'keys' tf_outputs.json
             exit 1
           fi
           echo "api_url=$url" >> $GITHUB_OUTPUT
-
-      - name: Store API URL into GitHub secret
-        run: |
-          gh secret set API_INVOKE_URL --body "${{ steps.extract_url.outputs.api_url }}"
+          gh secret set API_INVOKE_URL --body "$url"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
