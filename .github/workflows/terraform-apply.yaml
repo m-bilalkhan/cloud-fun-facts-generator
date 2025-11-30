@@ -53,57 +53,61 @@ jobs:
           import os
           import sys
           import re
-
+      
           result = subprocess.run(
               ['terraform', 'output', '-json'],
               capture_output=True,
               text=True
           )
-
+      
           raw = result.stdout
-
-          # 1) Remove ANSI color codes
-          raw = re.sub(r'\x1b\[[0-9;]*m', '', raw)
-
-          # 2) Remove all NON-PRINTABLE chars
-          raw = ''.join(ch for ch in raw if ch.isprintable() or ch in '\r\n\t ')
-
-          # 3) Extract JSON object strictly from first '{' to last '}'
-          start = raw.find('{')
-          end = raw.rfind('}')
-
+      
+          # Remove GitHub debug injected lines
+          cleaned = "\n".join(
+              line for line in raw.splitlines()
+              if not line.startswith("::debug::")
+          )
+      
+          # Keep only printable characters
+          cleaned = ''.join(ch for ch in cleaned if ch.isprintable() or ch in '\r\n\t ')
+      
+          # Extract pure JSON from first `{` to last `}`
+          start = cleaned.find('{')
+          end = cleaned.rfind('}')
+      
           if start == -1 or end == -1:
-              print("❗ ERROR: Could not find JSON object in output")
-              print("RAW OUTPUT:\n", raw)
+              print("❗ ERROR: JSON braces not found")
+              print("CLEANED OUTPUT:\n", cleaned)
               sys.exit(1)
-
-          json_text = raw[start:end+1].strip()
-
+      
+          json_text = cleaned[start:end+1]
+      
           try:
               outputs = json.loads(json_text)
           except Exception as e:
-              print("❗ ERROR decoding JSON")
+              print("❗ FINAL JSON ERROR")
               print("Error:", e)
-              print("RAW JSON TEXT (repr):", repr(json_text))
+              print("JSON TEXT:", repr(json_text))
               sys.exit(1)
-
+      
           url = outputs.get('api_invoke_url', {}).get('value')
           if not url:
-              print("❗ ERROR: api_invoke_url missing or empty")
+              print("❗ ERROR: URL is missing or empty")
               sys.exit(1)
-
+      
           print(f"Extracted URL: {url}")
-
+      
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f"api_url={url}\n")
-
+      
           subprocess.run(
               ['gh', 'secret', 'set', 'API_INVOKE_URL', '--body', url],
               env=os.environ,
               check=True
           )
-
+      
           print("✔ Successfully stored API URL")
           EOF
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
