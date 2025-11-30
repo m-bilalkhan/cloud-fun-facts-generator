@@ -46,14 +46,30 @@ jobs:
 
       - name: Get api_invoke_url output (JSON)
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform output -json > tf_outputs.json
-
+        run: |
+          if ! terraform output -json > tf_outputs.json; then
+            echo "Error: terraform output command failed"
+            cat tf_outputs.json
+            exit 1
+          fi
+          echo "Terraform outputs:"
+          cat tf_outputs.json
+      
       - name: Extract API URL
         id: extract_url
         run: |
+          # Validate JSON first
+          if ! jq empty tf_outputs.json 2>/dev/null; then
+            echo "Error: tf_outputs.json is not valid JSON"
+            cat tf_outputs.json
+            exit 1
+          fi
+          
           url=$(jq -r '.api_invoke_url.value' tf_outputs.json)
           if [ -z "$url" ] || [ "$url" = "null" ]; then
             echo "No api_invoke_url found in Terraform outputs"
+            echo "Available outputs:"
+            jq 'keys' tf_outputs.json
             exit 1
           fi
           echo "api_url=$url" >> $GITHUB_OUTPUT
