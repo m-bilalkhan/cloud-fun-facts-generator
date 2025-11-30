@@ -1,0 +1,65 @@
+name: Terraform CI/CD
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    env:
+      TF_WORKING_DIR: ./terraform
+      AWS_REGION: us-east-1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.7
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -input=false
+
+      - name: Terraform Plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -out=tfplan -input=false
+
+      - name: Terraform Apply
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Get api_invoke_url output (JSON)
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform output -json > tf_outputs.json
+
+      - name: Extract API URL
+        id: extract_url
+        run: |
+          url=$(jq -r '.api_invoke_url.value' tf_outputs.json)
+          if [ -z "$url" ] || [ "$url" = "null" ]; then
+            echo "No api_invoke_url found in Terraform outputs"
+            exit 1
+          fi
+          echo "api_url=$url" >> $GITHUB_OUTPUT
+
+      - name: Store API URL into GitHub secret
+        run: |
+          gh secret set API_INVOKE_URL --body "${{ steps.extract_url.outputs.api_url }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
