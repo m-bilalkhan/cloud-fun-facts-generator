@@ -1,6 +1,11 @@
 name: Terraform Destroy
 on:
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type YES to confirm destruction of all resources'
+        required: true
+        default: 'NO'
 
 permissions:
   contents: write
