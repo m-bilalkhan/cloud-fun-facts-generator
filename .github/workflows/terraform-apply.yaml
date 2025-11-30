@@ -47,15 +47,15 @@ jobs:
       - name: Extract and Store API URL
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          # Get the output and extract only the JSON part (starting from '{')
-          tf_output=$(terraform output -json 2>&1)
-          json_output=$(echo "$tf_output" | grep -A 999 '^{' | head -n -0)
+          # Get raw output, skip first line (the command echo)
+          tf_output=$(terraform output -json 2>&1 | tail -n +2)
           
-          url=$(echo "$json_output" | jq -r '.api_invoke_url.value')
+          echo "=== Terraform JSON output ==="
+          echo "$tf_output"
+          
+          url=$(echo "$tf_output" | jq -r '.api_invoke_url.value')
           if [ -z "$url" ] || [ "$url" = "null" ]; then
             echo "No api_invoke_url found in Terraform outputs"
-            echo "Full output was:"
-            echo "$tf_output"
             exit 1
           fi
           echo "api_url=$url" >> $GITHUB_OUTPUT
