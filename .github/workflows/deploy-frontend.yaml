@@ -20,7 +20,7 @@ jobs:
 
       - name: Update index.html with API URL
         run: |
-          API_URL="${{ secrets.API_INVOKE_URL }}"
+          API_URL="${{ env.API_INVOKE_URL }}"
           FILE="./index.html"
           if ! grep -q '__API_INVOKE_URL__' "$FILE"; then
             echo "Placeholder __API_INVOKE_URL__ not found in $FILE"

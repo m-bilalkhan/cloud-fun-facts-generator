@@ -62,52 +62,31 @@ jobs:
       
           raw = result.stdout
       
-          # Remove GitHub debug injected lines
+          # Remove GitHub debug lines
           cleaned = "\n".join(
               line for line in raw.splitlines()
               if not line.startswith("::debug::")
           )
       
-          # Keep only printable characters
-          cleaned = ''.join(ch for ch in cleaned if ch.isprintable() or ch in '\r\n\t ')
-      
-          # Extract pure JSON from first `{` to last `}`
+          # Extract JSON only
           start = cleaned.find('{')
           end = cleaned.rfind('}')
-      
-          if start == -1 or end == -1:
-              print("❗ ERROR: JSON braces not found")
-              print("CLEANED OUTPUT:\n", cleaned)
-              sys.exit(1)
-      
           json_text = cleaned[start:end+1]
       
-          try:
-              outputs = json.loads(json_text)
-          except Exception as e:
-              print("❗ FINAL JSON ERROR")
-              print("Error:", e)
-              print("JSON TEXT:", repr(json_text))
-              sys.exit(1)
-      
-          url = outputs.get('api_invoke_url', {}).get('value')
-          if not url:
-              print("❗ ERROR: URL is missing or empty")
-              sys.exit(1)
+          outputs = json.loads(json_text)
+          url = outputs['api_invoke_url']['value']
       
           print(f"Extracted URL: {url}")
       
+          # EXPORT to environment for later steps
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write(f"API_INVOKE_URL={url}\n")
+      
+          # EXPORT normal GitHub output
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f"api_url={url}\n")
       
-          subprocess.run(
-              ['gh', 'secret', 'set', 'API_INVOKE_URL', '--body', url],
-              env=os.environ,
-              check=True
-          )
-      
-          print("✔ Successfully stored API URL")
+          print("✔ Successfully exposed API URL")
           EOF
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
