@@ -53,54 +53,57 @@ jobs:
           import os
           import sys
           import re
-      
-          # Run terraform
+
           result = subprocess.run(
               ['terraform', 'output', '-json'],
               capture_output=True,
               text=True
           )
-      
+
           raw = result.stdout
-      
-          # Extract only JSON object between first { and last }
-          m = re.search(r'\{.*\}', raw, re.DOTALL)
-          if not m:
-              print("❗ ERROR: No valid JSON object found in output")
+
+          # 1) Remove ANSI color codes
+          raw = re.sub(r'\x1b\[[0-9;]*m', '', raw)
+
+          # 2) Remove all NON-PRINTABLE chars
+          raw = ''.join(ch for ch in raw if ch.isprintable() or ch in '\r\n\t ')
+
+          # 3) Extract JSON object strictly from first '{' to last '}'
+          start = raw.find('{')
+          end = raw.rfind('}')
+
+          if start == -1 or end == -1:
+              print("❗ ERROR: Could not find JSON object in output")
               print("RAW OUTPUT:\n", raw)
               sys.exit(1)
-      
-          json_text = m.group(0).strip()
-      
+
+          json_text = raw[start:end+1].strip()
+
           try:
               outputs = json.loads(json_text)
-          except json.JSONDecodeError as e:
+          except Exception as e:
               print("❗ ERROR decoding JSON")
               print("Error:", e)
-              print("JSON TEXT:\n", json_text)
+              print("RAW JSON TEXT (repr):", repr(json_text))
               sys.exit(1)
-      
-          # Extract URL
-          try:
-              url = outputs['api_invoke_url']['value']
-          except KeyError:
-              print("❗ ERROR: api_invoke_url missing from JSON")
-              print("Available keys:", list(outputs.keys()))
+
+          url = outputs.get('api_invoke_url', {}).get('value')
+          if not url:
+              print("❗ ERROR: api_invoke_url missing or empty")
               sys.exit(1)
-      
+
           print(f"Extracted URL: {url}")
-      
+
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f"api_url={url}\n")
-      
+
           subprocess.run(
               ['gh', 'secret', 'set', 'API_INVOKE_URL', '--body', url],
               env=os.environ,
               check=True
           )
-      
+
           print("✔ Successfully stored API URL")
           EOF
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
