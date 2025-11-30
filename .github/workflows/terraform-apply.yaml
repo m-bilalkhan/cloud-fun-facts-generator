@@ -43,27 +43,54 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform apply -input=false -auto-approve tfplan
-        
+
       - name: Extract and Store API URL
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          # Save to file, skip first line
-          terraform output -json 2>&1 | tail -n +2 > tf_output.json
+          python3 << 'EOF'
+          import subprocess
+          import json
+          import os
           
-          # Take only up to and including the first standalone }
-          sed -n '1,/^}$/p' tf_output.json > tf_output_clean.json
+          # Run terraform output
+          result = subprocess.run(
+              ['terraform', 'output', '-json'],
+              capture_output=True,
+              text=True
+          )
           
-          cat tf_output_clean.json
-          
-          url=$(jq -r '.api_invoke_url.value' tf_output_clean.json)
-          
-          if [ -z "$url" ] || [ "$url" = "null" ]; then
-            echo "No api_invoke_url found in Terraform outputs"
-            exit 1
-          fi
-          
-          echo "Extracted URL: $url"
-          echo "api_url=$url" >> $GITHUB_OUTPUT
-          gh secret set API_INVOKE_URL --body "$url"
+          # Parse the JSON output
+          try:
+              outputs = json.loads(result.stdout)
+              url = outputs['api_invoke_url']['value']
+              
+              if not url:
+                  print("Error: api_invoke_url is empty")
+                  exit(1)
+              
+              print(f"Extracted URL: {url}")
+              
+              # Set GitHub output
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write(f"api_url={url}\n")
+              
+              # Set GitHub secret
+              subprocess.run(
+                  ['gh', 'secret', 'set', 'API_INVOKE_URL', '--body', url],
+                  env=os.environ,
+                  check=True
+              )
+              
+              print("Successfully stored API URL")
+              
+          except json.JSONDecodeError as e:
+              print(f"Error parsing JSON: {e}")
+              print(f"Raw output: {result.stdout}")
+              exit(1)
+          except KeyError:
+              print("Error: api_invoke_url not found in outputs")
+              print(f"Available outputs: {list(outputs.keys())}")
+              exit(1)
+          EOF
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
