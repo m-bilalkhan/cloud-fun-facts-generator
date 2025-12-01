@@ -1,6 +1,12 @@
 name: Build and Deploy
 
 on:
+  workflow_call:
+    inputs:
+      api_invoke_url:
+        description: 'API Invoke URL to inject into frontend'
+        required: false
+        type: string
   workflow_dispatch:
 
 jobs:
@@ -16,21 +22,55 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Update index.html with API URL
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Resolve API URL
+        id: resolve-url
+        env:
+          INPUT_URL: ${{ inputs.api_invoke_url }}
         run: |
-          API_URL="${{ env.API_INVOKE_URL }}"
+          if [ -n "$INPUT_URL" ]; then
+            echo "api_url=$INPUT_URL" >> $GITHUB_OUTPUT
+            echo "✓ Using API URL from workflow input"
+          else
+            echo "Fetching API URL from AWS HTTP API Gateway..."
+            API_ID=$(aws apigatewayv2 get-apis \
+              --query "Items[?Name=='FunfactsAPI'].ApiId" \
+              --output text | head -1)
+
+            if [ -z "$API_ID" ] || [ "$API_ID" = "None" ]; then
+              echo "❌ No HTTP API Gateway found"
+              exit 1
+            fi
+
+            INVOKE_URL=$(aws apigatewayv2 get-stages \
+              --api-id "$API_ID" \
+              --query "Items[0].InvokeUrl" \
+              --output text)
+
+            if [ -z "$INVOKE_URL" ] || [ "$INVOKE_URL" = "None" ]; then
+              echo "❌ No invoke URL found for HTTP API Gateway"
+              exit 1
+            fi
+
+            echo "api_url=$INVOKE_URL" >> $GITHUB_OUTPUT
+            echo "✓ Using API URL fetched from AWS: $INVOKE_URL"
+          fi
+
+      - name: Update index.html with API URL
+        env:
+          API_URL: ${{ steps.resolve-url.outputs.api_url }}
+        run: |
           FILE="./frontend/index.html"
           if ! grep -q '__API_INVOKE_URL__' "$FILE"; then
             echo "Placeholder __API_INVOKE_URL__ not found in $FILE"
             exit 1
           fi
           sed -i "s|__API_INVOKE_URL__|$API_URL|g" "$FILE"
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Sync built files to S3
         env:

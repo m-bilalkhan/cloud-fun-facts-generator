@@ -13,6 +13,8 @@ jobs:
     env:
       TF_WORKING_DIR: ./terraform
       AWS_REGION: ${{ secrets.AWS_REGION }}
+    outputs:
+      api_url: ${{ steps.extract-url.outputs.api_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,48 +47,46 @@ jobs:
         run: terraform apply -input=false -auto-approve tfplan
 
       - name: Extract and Store API URL
+        id: extract-url
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           python3 << 'EOF'
           import subprocess
           import json
           import os
-          import sys
-          import re
-      
+          
           result = subprocess.run(
               ['terraform', 'output', '-json'],
               capture_output=True,
               text=True
           )
-      
+          
           raw = result.stdout
-      
-          # Remove GitHub debug lines
           cleaned = "\n".join(
               line for line in raw.splitlines()
               if not line.startswith("::debug::")
           )
-      
-          # Extract JSON only
+          
           start = cleaned.find('{')
           end = cleaned.rfind('}')
           json_text = cleaned[start:end+1]
-      
+          
           outputs = json.loads(json_text)
           url = outputs['api_invoke_url']['value']
-      
+          
           print(f"Extracted URL: {url}")
-      
-          # EXPORT to environment for later steps
-          with open(os.environ['GITHUB_ENV'], 'a') as f:
-              f.write(f"API_INVOKE_URL={url}\n")
-      
-          # EXPORT normal GitHub output
+          
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f"api_url={url}\n")
-      
+          
           print("✔ Successfully exposed API URL")
           EOF
+
+  deploy:
+    needs: terraform
+    uses: ./.github/workflows/deploy-frontend.yaml
+    secrets: inherit
+    with:
+      api_invoke_url: ${{ needs.terraform.outputs.api_url }}
 
 
