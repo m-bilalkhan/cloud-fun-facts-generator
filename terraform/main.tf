@@ -53,7 +53,7 @@ resource "aws_iam_role_policy_attachment" "bedrock_access" {
 #----------------------------
 data "archive_file" "this" {
   type        = "zip"
-  source_file = "${path.module}/src/lambda_function.py"
+  source_file = "../lambda/lambda_function.py"
   output_path = "${path.module}/lambda/function.zip"
 }
 

@@ -19,7 +19,7 @@ jobs:
       - name: Update index.html with API URL
         run: |
           API_URL="${{ env.API_INVOKE_URL }}"
-          FILE="./index.html"
+          FILE="../../frontend/index.html"
           if ! grep -q '__API_INVOKE_URL__' "$FILE"; then
             echo "Placeholder __API_INVOKE_URL__ not found in $FILE"
             exit 1
@@ -37,7 +37,7 @@ jobs:
           AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
         run: |
           echo "Deploying to S3 bucket: $AWS_S3_BUCKET"
-          aws s3 sync ./ s3://$AWS_S3_BUCKET/ --delete --only-show-errors
+          aws s3 sync frontend/ s3://$AWS_S3_BUCKET/ --delete --only-show-errors
 
       - name: Invalidate CloudFront cache
         env:
