@@ -4,6 +4,8 @@
 
 **Course Project from [Zero to Cloud](https://zerotocloud.co/courses/free-cloud-fun-facts)** - A free, hands-on AWS learning experience.
 
+🌐 **Live Demo**: [cloudfunfacts.bilalcloudventures.com](https://cloudfunfacts.bilalcloudventures.com)
+
 ## 📋 Table of Contents
 - [Overview](#overview)
 - [Demo](#demo)
