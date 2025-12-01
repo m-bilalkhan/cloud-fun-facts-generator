@@ -38,19 +38,9 @@ jobs:
             echo "✓ Using API URL from workflow input"
           else
             echo "Fetching API URL from AWS HTTP API Gateway..."
-            API_ID=$(aws apigatewayv2 get-apis \
-              --query "Items[?Name=='FunfactsAPI'].ApiId" \
+            INVOKE_URL=$(aws apigatewayv2 get-apis \
+              --query "Items[?Name=='FunfactsAPI'].ApiEndpoint" \
               --output text | head -1)
-
-            if [ -z "$API_ID" ] || [ "$API_ID" = "None" ]; then
-              echo "❌ No HTTP API Gateway found"
-              exit 1
-            fi
-
-            INVOKE_URL=$(aws apigatewayv2 get-stages \
-              --api-id "$API_ID" \
-              --query "Items[0].InvokeUrl" \
-              --output text)
 
             if [ -z "$INVOKE_URL" ] || [ "$INVOKE_URL" = "None" ]; then
               echo "❌ No invoke URL found for HTTP API Gateway"
