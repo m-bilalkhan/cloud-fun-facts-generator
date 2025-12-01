@@ -12,10 +12,8 @@
 - [Architecture](#architecture)
 - [Features](#features)
 - [Technologies Used](#technologies-used)
-- [Prerequisites](#prerequisites)
 - [Installation & Setup](#installation--setup)
 - [Project Structure](#project-structure)
-- [Usage](#usage)
 - [Infrastructure as Code](#infrastructure-as-code)
 - [CI/CD Pipeline](#cicd-pipeline)
 - [What I Learned](#what-i-learned)
@@ -107,17 +105,6 @@ The application follows a serverless architecture pattern:
 - **GitHub Actions**: CI/CD pipeline for automated deployments
 - **Python**: Lambda runtime environment
 
-## 📦 Prerequisites
-
-Before you begin, ensure you have the following installed and configured:
-
-- AWS Account with appropriate permissions
-- AWS CLI configured with credentials
-- Terraform >= 1.0
-- Node.js >= 16.x
-- Git
-- GitHub account (for CI/CD)
-
 ## 📁 Project Structure
 
 ```
@@ -142,14 +129,6 @@ cloud-fun-facts-generator/
 ├── scripts/                # Utility scripts
 └── README.md
 ```
-
-## 💻 Usage
-
-Once deployed, simply:
-
-1. Navigate to **https://cloudfunfacts.bilalcloudventures.com**
-2. Click the "Get Cloud Fact" button
-3. Enjoy your AI-enhanced cloud computing fact!
 
 ## 🏗️ Infrastructure as Code
 
