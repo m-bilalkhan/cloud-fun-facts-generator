@@ -54,14 +54,14 @@ This setup demonstrates how modern serverless applications integrate multiple AW
 ## 🎬 Demo
 
 <!-- Add your demo GIF or video here -->
-![Demo GIF](path/to/demo.gif)
+![Demo GIF](demo.gif)
 
 *Click the button to get random cloud facts, powered by AWS!*
 
 ## 🏗️ Architecture
 
 <!-- Add your architecture diagram here -->
-![Architecture Diagram](path/to/architecture-diagram.png)
+![Architecture Diagram](architecture.svg)
 
 The application follows a serverless architecture pattern:
 1. User visits **cloudfunfacts.bilalcloudventures.com** (Route 53 DNS)
@@ -109,22 +109,16 @@ The application follows a serverless architecture pattern:
 cloud-fun-facts-generator/
 ├── terraform/              # Infrastructure as Code
 │   ├── main.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   └── modules/
+│   ├── backend.tf
+│   ├── provider.tf
 ├── lambda/                 # Backend Lambda functions
-│   ├── index.js
-│   ├── package.json
-│   └── handlers/
-├── frontend/               # React application
-│   ├── src/
-│   ├── public/
-│   └── package.json
+│   ├── lambda_function.py
+├── frontend/               # Frontend application
+│   ├── index.html
 ├── .github/
 │   └── workflows/          # CI/CD pipelines
 │       ├── deploy-backend.yml
 │       └── deploy-frontend.yml
-├── scripts/                # Utility scripts
 └── README.md
 ```
 
